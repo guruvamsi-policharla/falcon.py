@@ -20,6 +20,7 @@ from scripts import saga
 from scripts.samplerz_KAT512 import sampler_KAT512
 from scripts.sign_KAT import sign_KAT
 from scripts.samplerz_KAT1024 import sampler_KAT1024
+from naive_ringmul import naive_mul, naive_mul_getcoeff
 # https://stackoverflow.com/a/25823885/4143624
 from timeit import default_timer as timer
 
@@ -74,6 +75,36 @@ def test_ntt(n, iterations=10):
                 return False
         except ZeroDivisionError:
             continue
+    return True
+
+
+def test_naive_mul(n, iterations=10):
+    """Test the naive multiplication against NTT multiplication."""
+    for i in range(iterations):
+        f = [randint(0, q - 1) for j in range(n)]
+        g = [randint(0, q - 1) for j in range(n)]
+        h_naive = naive_mul(f, g)
+        h_ntt = mul_zq(f, g)
+        if h_naive != h_ntt:
+            print("Naive multiplication mismatch")
+            return False
+    return True
+
+
+def test_naive_mul_getcoeff(n, iterations=10):
+    """Test the naive multiplication coefficient retrieval."""
+    for i in range(iterations):
+        f = [randint(0, q - 1) for j in range(n)]
+        g = [randint(0, q - 1) for j in range(n)]
+        h_full = naive_mul(f, g)
+        
+        # Test random indices
+        for _ in range(5):
+            idx = randint(0, n - 1)
+            coeff = naive_mul_getcoeff(f, g, idx)
+            if coeff != h_full[idx]:
+                print(f"Mismatch at index {idx}: expected {h_full[idx]}, got {coeff}")
+                return False
     return True
 
 
@@ -289,6 +320,8 @@ def test(n, iterations=500):
     """A battery of tests."""
     wrapper_test(test_fft, "FFT", n, iterations)
     wrapper_test(test_ntt, "NTT", n, iterations)
+    wrapper_test(test_naive_mul, "Naive Mul", n, iterations)
+    wrapper_test(test_naive_mul_getcoeff, "Naive Mul Coeff", n, iterations)
     # test_ntrugen is super slow, hence performed over a single iteration
     wrapper_test(test_ntrugen, "NTRUGen", n, 1)
     wrapper_test(test_ffnp, "ffNP", n, iterations)

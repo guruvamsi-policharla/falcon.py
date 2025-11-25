@@ -386,3 +386,36 @@ class SecretKey:
 
         # If all checks are passed, accept
         return True
+    
+    # requires both (s0,s1) as input
+    def fverify(self, message, signature, s0):
+        """
+        Fast failing verification of a signature.
+        """
+        # Unpack the salt and the short polynomial s1
+        salt = signature[HEAD_LEN:HEAD_LEN + SALT_LEN]
+        enc_s = signature[HEAD_LEN + SALT_LEN:]
+        s1 = decompress(enc_s, self.sig_bytelen - HEAD_LEN - SALT_LEN, self.n)
+
+        # Check that the encoding is valid
+        if (s1 is False):
+            print("Invalid encoding")
+            return False
+
+        # Check that the (s0, s1) is short
+        norm_sign = sum(coef ** 2 for coef in s0)
+        norm_sign += sum(coef ** 2 for coef in s1)
+        if norm_sign > self.signature_bound:
+            print("Squared norm of signature is too large:", norm_sign)
+            return False
+
+        # Compute s0 and normalize its coefficients in (-q/2, q/2]
+        # hashed = self.hash_to_point(message, salt)
+        # s0 = sub_zq(hashed, mul_zq(s1, self.h))
+        # s0 = [(coef + (q >> 1)) % q - (q >> 1) for coef in s0]
+
+        # s0 = H(m,salt) - s1 * h
+        # todo: instead check that H(m,salt) = s0 + s1 * h on the randomly chosen indices by using naive polynomial multiplication for s1 * h
+
+        # If all checks are passed, accept
+        return True
