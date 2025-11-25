@@ -264,6 +264,24 @@ def test_signature(n, iterations=10):
             return False
     return True
 
+def test_fverify(n, iterations=10):
+    """
+    Test Falcon.
+    """
+    f = sign_KAT[n][0]["f"]
+    g = sign_KAT[n][0]["g"]
+    F = sign_KAT[n][0]["F"]
+    G = sign_KAT[n][0]["G"]
+    sk = SecretKey(n, [f, g, F, G])
+    pk = PublicKey(sk)
+    for i in range(iterations):
+        message = b"abc"
+        sig = sk.sign(message)
+        s0 = pk.fverify_prepare(message, sig)
+        if pk.fverify(message, sig, s0, [0]) is False:
+            return False
+    return True
+
 
 def test_sign_KAT():
     """
@@ -330,6 +348,7 @@ def test(n, iterations=500):
     if (n in Params):
         wrapper_test(test_compress, "Compress", n, iterations)
         wrapper_test(test_signature, "Signature", n, iterations)
+        wrapper_test(test_fverify, "Fast Verify", n, iterations)
         # wrapper_test(test_sign_KAT, "Signature KATs", n, iterations)
     print("")
 

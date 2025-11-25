@@ -7,6 +7,7 @@ from numpy import set_printoptions
 from math import sqrt
 from fft import fft, ifft, sub, neg, add_fft, mul_fft
 from ntt import sub_zq, mul_zq, div_zq
+from naive_ringmul import naive_mul_getcoeff
 from ffsampling import gram, ffldl_fft, ffsampling_fft
 from ntrugen import ntru_gen
 from encoding import compress, decompress
@@ -191,7 +192,10 @@ class PublicKey:
         self.h = sk.h
         self.hash_to_point = sk.hash_to_point
         self.signature_bound = sk.signature_bound
+        self.signature_bound = sk.signature_bound
         self.verify = sk.verify
+        self.fverify = sk.fverify
+        self.fverify_prepare = sk.fverify_prepare
 
     def __repr__(self):
         """Print the object in readable form."""
@@ -387,8 +391,37 @@ class SecretKey:
         # If all checks are passed, accept
         return True
     
+    def fverify_prepare(self, message, signature):
+        """
+        Prepares a signature for fast verification.
+        """
+        # Unpack the salt and the short polynomial s1
+        salt = signature[HEAD_LEN:HEAD_LEN + SALT_LEN]
+        enc_s = signature[HEAD_LEN + SALT_LEN:]
+        s1 = decompress(enc_s, self.sig_bytelen - HEAD_LEN - SALT_LEN, self.n)
+
+        # Check that the encoding is valid
+        if (s1 is False):
+            print("Invalid encoding")
+            return False
+
+        # Compute s0 and normalize its coefficients in (-q/2, q/2]
+        hashed = self.hash_to_point(message, salt)
+        s0 = sub_zq(hashed, mul_zq(s1, self.h))
+        s0 = [(coef + (q >> 1)) % q - (q >> 1) for coef in s0]
+
+        # Check that the (s0, s1) is short
+        norm_sign = sum(coef ** 2 for coef in s0)
+        norm_sign += sum(coef ** 2 for coef in s1)
+        if norm_sign > self.signature_bound:
+            print("Squared norm of signature is too large:", norm_sign)
+            return False
+
+        # If all checks are passed, accept
+        return s0
+
     # requires both (s0,s1) as input
-    def fverify(self, message, signature, s0):
+    def fverify(self, message, signature, s0, indices):
         """
         Fast failing verification of a signature.
         """
@@ -409,13 +442,13 @@ class SecretKey:
             print("Squared norm of signature is too large:", norm_sign)
             return False
 
-        # Compute s0 and normalize its coefficients in (-q/2, q/2]
-        # hashed = self.hash_to_point(message, salt)
-        # s0 = sub_zq(hashed, mul_zq(s1, self.h))
-        # s0 = [(coef + (q >> 1)) % q - (q >> 1) for coef in s0]
-
         # s0 = H(m,salt) - s1 * h
-        # todo: instead check that H(m,salt) = s0 + s1 * h on the randomly chosen indices by using naive polynomial multiplication for s1 * h
+        # instead of checking all entried, just verify that H(m,salt) = s0 + s1 * h on indices by using naive polynomial multiplication for s1 * h
+        hashed = self.hash_to_point(message, salt)
+        for idx in indices:
+            val = naive_mul_getcoeff(s1, self.h, idx)
+            if hashed[idx] != (s0[idx] + val) % q:
+                return False
 
         # If all checks are passed, accept
         return True
