@@ -277,8 +277,8 @@ def test_fverify(n, iterations=10):
     for i in range(iterations):
         message = b"abc"
         sig = sk.sign(message)
-        s0 = pk.fverify_prepare(message, sig)
-        if pk.fverify(message, sig, s0, [0]) is False:
+        s0,s1,signature_bound,salt = pk.fverify_prepare(message, sig)
+        if pk.fverify(message, s0, s1, signature_bound, salt, [0]) is False:
             return False
     return True
 

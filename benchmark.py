@@ -58,7 +58,7 @@ def benchmark_verify():
         avg_verify = (t_verify / iterations) * 1000
 
         # Prepare for fverify (excluded from benchmark)
-        s0 = pk.fverify_prepare(message, sig)
+        s0,s1,signature_bound,salt = pk.fverify_prepare(message, sig)
         
         for count in indices_counts:
             if count > n: continue
@@ -67,7 +67,7 @@ def benchmark_verify():
             indices = [random.randint(0, n - 1) for _ in range(count)]
             
             # Benchmark fverify
-            t_fverify = timeit.timeit(lambda: pk.fverify(message, sig, s0, indices), number=iterations)
+            t_fverify = timeit.timeit(lambda: pk.fverify(message, s0, s1, signature_bound, salt, indices), number=iterations)
             avg_fverify = (t_fverify / iterations) * 1000
             
             speedup = avg_verify / avg_fverify if avg_fverify > 0 else float('inf')

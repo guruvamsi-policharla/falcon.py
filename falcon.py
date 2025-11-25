@@ -418,27 +418,27 @@ class SecretKey:
             return False
 
         # If all checks are passed, accept
-        return s0
+        return s0,s1,self.signature_bound,salt
 
     # requires both (s0,s1) as input
-    def fverify(self, message, signature, s0, indices):
+    def fverify(self, message, s0, s1, signature_bound, salt, indices):
         """
         Fast failing verification of a signature.
         """
-        # Unpack the salt and the short polynomial s1
-        salt = signature[HEAD_LEN:HEAD_LEN + SALT_LEN]
-        enc_s = signature[HEAD_LEN + SALT_LEN:]
-        s1 = decompress(enc_s, self.sig_bytelen - HEAD_LEN - SALT_LEN, self.n)
+        # # Unpack the salt and the short polynomial s1
+        # salt = signature[HEAD_LEN:HEAD_LEN + SALT_LEN]
+        # enc_s = signature[HEAD_LEN + SALT_LEN:]
+        # s1 = decompress(enc_s, self.sig_bytelen - HEAD_LEN - SALT_LEN, self.n)
 
-        # Check that the encoding is valid
-        if (s1 is False):
-            print("Invalid encoding")
-            return False
+        # # Check that the encoding is valid
+        # if (s1 is False):
+        #     print("Invalid encoding")
+        #     return False
 
         # Check that the (s0, s1) is short
         norm_sign = sum(coef ** 2 for coef in s0)
         norm_sign += sum(coef ** 2 for coef in s1)
-        if norm_sign > self.signature_bound:
+        if norm_sign > signature_bound:
             print("Squared norm of signature is too large:", norm_sign)
             return False
 
